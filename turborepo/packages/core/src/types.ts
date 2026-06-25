@@ -67,6 +67,48 @@ export const EMPTY_PLAN_STATE: PlanState = {
   plans: {},
 }
 
+/**
+ * Schema version for localStorage persistence.
+ *
+ * HOW TO USE:
+ * - Bump this number whenever PlanState, KidProfile, or ChildPlan changes
+ *   in a way that would make old stored data invalid or misleading.
+ * - Add a migration case inside `migratePlanState()` in PlanScreen.tsx to
+ *   upgrade existing user data rather than wiping it (when possible).
+ * - Commit the bump — Vercel deploys it automatically from GitHub, and
+ *   every user's browser migrates on the next page load.
+ *
+ * Current schema (v1):
+ *   PlanState { children: KidProfile[], activeChildId: string|null, plans: Record<string,ChildPlan> }
+ *   KidProfile { id: string, name: string, age: number, interests: string[] }
+ *   ChildPlan  { [weekKey: string]: string | null }
+ */
+export const PLAN_SCHEMA_VERSION = 1
+
+/**
+ * Runtime shape validator for PlanState.
+ *
+ * Returns true only when `val` matches the current PlanState structure.
+ * Used by usePlanState() to guard against stale or corrupted localStorage data.
+ * Lives here (next to the type) so it stays in sync when the type changes.
+ */
+export function isValidPlanState(val: unknown): val is PlanState {
+  if (!val || typeof val !== "object") return false
+  const v = val as Record<string, unknown>
+  if (!Array.isArray(v.children)) return false
+  if (typeof v.activeChildId !== "string" && v.activeChildId !== null) return false
+  if (!v.plans || typeof v.plans !== "object" || Array.isArray(v.plans)) return false
+  for (const child of v.children as unknown[]) {
+    if (!child || typeof child !== "object") return false
+    const c = child as Record<string, unknown>
+    if (typeof c.id !== "string") return false
+    if (typeof c.name !== "string") return false
+    if (typeof c.age !== "number") return false
+    if (!Array.isArray(c.interests)) return false
+  }
+  return true
+}
+
 // ── Filter types ─────────────────────────────────────────────
 
 export interface CampFilters {

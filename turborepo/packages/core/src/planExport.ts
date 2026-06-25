@@ -4,7 +4,7 @@
 
 import type { CampSession, KidProfile, ChildPlan } from "./types"
 import { formatCampType, formatCare, formatPrice, formatDateRange } from "./format"
-import { SUMMER_WEEKS } from "./tokens"
+import type { SummerWeek } from "./tokens"
 
 // ── CSV ──────────────────────────────────────────────────────
 
@@ -82,15 +82,19 @@ function nowStamp(): string {
 /**
  * Build an ICS calendar string for one child's plan.
  * Each assigned week becomes a VEVENT spanning Mon–Fri.
+ *
+ * @param weeks - Derived week list from deriveSummerWeeks(). Drives which
+ *   weeks appear in the calendar and what dates each one gets.
  */
 export function toIcs(
   child: KidProfile,
   plan: ChildPlan,
   campById: Map<string, CampSession>,
+  weeks: SummerWeek[],
 ): string {
   const dtstamp = nowStamp()
 
-  const events = SUMMER_WEEKS
+  const events = weeks
     .filter((week) => {
       const campId = plan[week.key]
       return !!campId && campById.has(campId)

@@ -3,6 +3,8 @@
 // Maps to Tailwind utility classes used across web + future iOS.
 // ============================================================
 
+import type { CampSession } from "./types"
+
 export const colors = {
   brand: {
     50: "#eff6ff",
@@ -75,13 +77,99 @@ export const campTypeColors: Record<string, string> = {
 }
 
 export interface SummerWeek {
-  key: string       // "W01" … "W09"
-  label: string     // "Week 1"
+  key: string       // DB week_key, e.g. "W22" (ISO week number)
+  label: string     // Sequential display alias, e.g. "Week 1"
   dates: string     // "Jun 22 – Jun 26"
   icsStart: string  // "20260622"
   icsEnd: string    // "20260627" (Saturday — exclusive end for ICS)
 }
 
+/**
+ * Parse a DB week_key like "W22" → 22.
+ * Returns null for unrecognised formats.
+ */
+export function parseWeekNum(weekKey: string): number | null {
+  const m = weekKey.match(/^W(\d+)$/)
+  return m ? parseInt(m[1]!, 10) : null
+}
+
+/** Return the Monday (UTC) of ISO week `week` in `year`. */
+function isoWeekMonday(year: number, week: number): Date {
+  // Jan 4 is always in ISO week 1 (by definition of ISO 8601)
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const dow = jan4.getUTCDay() || 7   // Mon=1 … Sun=7
+  const mon1 = new Date(jan4)
+  mon1.setUTCDate(jan4.getUTCDate() - (dow - 1))
+  const target = new Date(mon1)
+  target.setUTCDate(mon1.getUTCDate() + (week - 1) * 7)
+  return target
+}
+
+const MONTH_ABR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const
+
+function fmtDate(d: Date): string {
+  return `${MONTH_ABR[d.getUTCMonth()]} ${d.getUTCDate()}`
+}
+
+function icsDate(d: Date): string {
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(d.getUTCDate()).padStart(2, "0")
+  return `${y}${m}${day}`
+}
+
+/**
+ * Derive SummerWeek entries from loaded camp data.
+ *
+ * - Uses the actual `week_key` values from the DB (e.g. "W22", "W25")
+ * - Sorts ascending by ISO week number
+ * - Assigns sequential display labels: "Week 1", "Week 2", …
+ * - Computes exact Mon–Fri dates and ICS stamps from the ISO week + year
+ *
+ * This makes the Plan tab robust across years — no hardcoded date tables.
+ */
+export function deriveSummerWeeks(camps: CampSession[]): SummerWeek[] {
+  // Collect unique non-empty week keys
+  const keySet = new Set<string>()
+  for (const c of camps) {
+    if (c.week_key) keySet.add(c.week_key)
+  }
+
+  // Sort numerically by ISO week number; fall back to lexical
+  const keys = [...keySet].sort((a, b) => {
+    const na = parseWeekNum(a) ?? 9999
+    const nb = parseWeekNum(b) ?? 9999
+    return na !== nb ? na - nb : a.localeCompare(b)
+  })
+
+  return keys.map((key, i) => {
+    const weekNum = parseWeekNum(key)
+    // Use the year from the first camp with this week_key
+    const year = camps.find((c) => c.week_key === key)?.year ?? new Date().getUTCFullYear()
+
+    if (weekNum !== null) {
+      const mon = isoWeekMonday(year, weekNum)
+      const fri = new Date(mon); fri.setUTCDate(mon.getUTCDate() + 4)
+      const sat = new Date(mon); sat.setUTCDate(mon.getUTCDate() + 5) // ICS end is exclusive
+      return {
+        key,
+        label: `Week ${i + 1}`,
+        dates: `${fmtDate(mon)} – ${fmtDate(fri)}`,
+        icsStart: icsDate(mon),
+        icsEnd: icsDate(sat),
+      }
+    }
+
+    // Unrecognised key format — fall back to the camp's own date range string
+    const fallbackDates = camps.find((c) => c.week_key === key)?.week_date_range ?? ""
+    return { key, label: `Week ${i + 1}`, dates: fallbackDates, icsStart: "", icsEnd: "" }
+  })
+}
+
+/**
+ * Hardcoded 2026 weeks — kept for unit tests and backward compatibility.
+ * Prefer deriveSummerWeeks(camps) in application code.
+ */
 export const SUMMER_WEEKS: SummerWeek[] = [
   { key: "W01", label: "Week 1", dates: "Jun 22 – Jun 26", icsStart: "20260622", icsEnd: "20260627" },
   { key: "W02", label: "Week 2", dates: "Jun 29 – Jul 3",  icsStart: "20260629", icsEnd: "20260704" },
