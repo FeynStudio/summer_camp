@@ -21,7 +21,9 @@ import {
   formatCare,
   completenessColor,
   campTypeColors,
+  deriveSummerWeeks,
   type SortKey,
+  type SummerWeek,
 } from "@repo/core"
 
 type Tab = "plan" | "search" | "compare" | "map"
@@ -152,13 +154,19 @@ export function CampApp() {
   const [selectedCamp, setSelectedCamp] = useState<CampSession | null>(null)
   const [compareList, setCompareList] = useState<CampSession[]>([])
 
+  // Derive summer weeks from actual camp data (uses DB week_key values e.g. "W22")
+  const summerWeeks = useMemo(() => deriveSummerWeeks(allCamps), [allCamps])
+
   // Derived
   const activeYear = years[0] ?? new Date().getFullYear()
-  const activeFilters: CampFilters = {
-    ...filters,
-    search,
-    year: filters.year || activeYear,
-  }
+
+  // Memoized so the object reference only changes when filter values actually change.
+  // Without this, activeFilters is a new literal on every render and the filtered
+  // memo below re-runs on every keystroke regardless of whether anything changed.
+  const activeFilters = useMemo<CampFilters>(
+    () => ({ ...filters, search, year: filters.year || activeYear }),
+    [filters, search, activeYear],
+  )
 
   const filtered = useMemo(
     () => sortCamps(allCamps.filter((c) => matchesFilters(c, activeFilters)), sortKey, sortDir),
@@ -283,6 +291,7 @@ export function CampApp() {
             allCamps={allCamps}
             isLoading={isLoading}
             onSelectCamp={setSelectedCamp}
+            summerWeeks={summerWeeks}
           />
         )}
 
@@ -408,6 +417,7 @@ export function CampApp() {
         compareList={compareList}
         planState={planState}
         onPlanChange={setPlanState}
+        summerWeeks={summerWeeks}
       />
       <ExportSheet
         open={showExport}
@@ -415,6 +425,7 @@ export function CampApp() {
         camps={allCamps}
         filteredCamps={filtered}
         planState={planState}
+        summerWeeks={summerWeeks}
       />
     </div>
   )
