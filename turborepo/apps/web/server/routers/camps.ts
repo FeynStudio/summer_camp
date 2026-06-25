@@ -44,13 +44,10 @@ export const campsRouter = router({
   /** All distinct years available in best_camp_sessions. */
   years: publicProcedure.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
-      .from("best_camp_sessions")
-      .select("year")
-      .order("year", { ascending: false })
+      .rpc("distinct_camp_years")
 
     if (error) throw new Error(error.message)
 
-    const years = [...new Set((data ?? []).map((r: { year: number }) => r.year))]
-    return years as number[]
+    return (data ?? []) as number[]
   }),
 })
