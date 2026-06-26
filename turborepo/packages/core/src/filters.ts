@@ -33,7 +33,7 @@ export function matchesFilters(camp: CampSession, filters: CampFilters): boolean
   // Best fit tags
   if (filters.bestFitTags.length > 0) {
     const tags = camp.best_fit_tags ?? []
-    if (!filters.bestFitTags.some((t) => tags.includes(t))) return false
+    if (!filters.bestFitTags.some((t: string) => tags.includes(t))) return false
   }
 
   // Before / after care

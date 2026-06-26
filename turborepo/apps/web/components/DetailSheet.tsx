@@ -23,6 +23,7 @@ export function DetailSheet({ camp, onClose, onCompare, compareList, planState, 
   const [pickedChildId, setPickedChildId] = useState<string | null>(null)
 
   if (!camp) return null
+  const campNN = camp // non-null local for use in closures
 
   const inCompare = compareList.some((c) => c.id === camp.id)
   const typeColor = campTypeColors[camp.camp_type ?? ""] ?? "bg-slate-100 text-slate-700"
@@ -32,11 +33,11 @@ export function DetailSheet({ camp, onClose, onCompare, compareList, planState, 
 
   // Determine which child (if any) already has this camp in their plan
   function childHasCamp(childId: string) {
-    return plans[childId]?.[camp.week_key] === camp.id
+    return plans[childId]?.[campNN.week_key] === campNN.id
   }
 
   function assignToChild(childId: string) {
-    const childPlan = { ...(plans[childId] ?? {}), [camp.week_key]: camp.id }
+    const childPlan = { ...(plans[childId] ?? {}), [campNN.week_key]: campNN.id }
     onPlanChange({
       ...planState,
       activeChildId: childId,
@@ -45,12 +46,12 @@ export function DetailSheet({ camp, onClose, onCompare, compareList, planState, 
   }
 
   function removeFromChild(childId: string) {
-    const childPlan = { ...(plans[childId] ?? {}), [camp.week_key]: null }
+    const childPlan = { ...(plans[childId] ?? {}), [campNN.week_key]: null }
     onPlanChange({ ...planState, plans: { ...plans, [childId]: childPlan } })
   }
 
   function copyText() {
-    navigator.clipboard.writeText(campSummaryText(camp)).catch(() => {})
+    navigator.clipboard.writeText(campSummaryText(campNN)).catch(() => {})
   }
 
   // Which child to assign to (auto-select if only 1)

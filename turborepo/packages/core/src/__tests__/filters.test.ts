@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { matchesFilters, sortCamps, allTags, allYears } from "../filters"
 import { DEFAULT_FILTERS } from "../types"
 import { makeSession } from "./fixtures"
+import type { CampSession } from "../types"
 
 // ── matchesFilters ────────────────────────────────────────────
 
@@ -183,22 +184,22 @@ describe("sortCamps", () => {
 
   it("sorts by camp_name ascending", () => {
     const result = sortCamps([gamma, alpha, beta], "camp_name", "asc")
-    expect(result.map((c) => c.camp_name)).toEqual(["Alpha Camp", "Beta Camp", "Gamma Camp"])
+    expect(result.map((c: CampSession) => c.camp_name)).toEqual(["Alpha Camp", "Beta Camp", "Gamma Camp"])
   })
 
   it("sorts by camp_name descending", () => {
     const result = sortCamps([alpha, gamma, beta], "camp_name", "desc")
-    expect(result.map((c) => c.camp_name)).toEqual(["Gamma Camp", "Beta Camp", "Alpha Camp"])
+    expect(result.map((c: CampSession) => c.camp_name)).toEqual(["Gamma Camp", "Beta Camp", "Alpha Camp"])
   })
 
   it("sorts by completeness_pct ascending", () => {
     const result = sortCamps([alpha, beta, gamma], "completeness_pct", "asc")
-    expect(result.map((c) => c.completeness_pct)).toEqual([30, 50, 80])
+    expect(result.map((c: CampSession) => c.completeness_pct)).toEqual([30, 50, 80])
   })
 
   it("sorts by completeness_pct descending", () => {
     const result = sortCamps([alpha, beta, gamma], "completeness_pct", "desc")
-    expect(result.map((c) => c.completeness_pct)).toEqual([80, 50, 30])
+    expect(result.map((c: CampSession) => c.completeness_pct)).toEqual([80, 50, 30])
   })
 
   it("does not mutate the original array", () => {
