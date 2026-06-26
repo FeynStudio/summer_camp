@@ -132,13 +132,17 @@ function CampCard({
 // ── CampApp ──────────────────────────────────────────────────
 
 export function CampApp() {
+  // Remote data
+  const { data: allCamps = [], isLoading, error } = trpc.camps.list.useQuery()
+  const { data: years = [] } = trpc.camps.years.useQuery()
+
   // Tab
   const [activeTab, setActiveTab] = useState<Tab>("plan")
 
   // Plan state (persisted to localStorage)
   const [planState, setPlanState] = usePlanState()
 
-  // Search tab state — declared before queries so we can build the SQL input
+  // Search tab state
   const [filters, setFilters] = useState<CampFilters>(DEFAULT_FILTERS)
   const [sortKey, setSortKey] = useState<SortKey>("camp_name")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
@@ -150,31 +154,15 @@ export function CampApp() {
   const [selectedCamp, setSelectedCamp] = useState<CampSession | null>(null)
   const [compareList, setCompareList] = useState<CampSession[]>([])
 
-  // Year query first — needed to resolve the default year before building SQL input
-  const { data: years = [] } = trpc.camps.years.useQuery()
-  const activeYear = years[0] ?? new Date().getFullYear()
-
-  // SQL-level filter input — sent to the server so Postgres does the heavy lifting.
-  // `search` is intentionally excluded: it stays client-side for instant feedback.
-  const sqlInput = useMemo(() => ({
-    year: filters.year || activeYear,
-    campTypes: filters.campTypes.length > 0 ? filters.campTypes : undefined,
-    bestFitTags: filters.bestFitTags.length > 0 ? filters.bestFitTags : undefined,
-    indoorOutdoor: filters.indoorOutdoor || undefined,
-    hasBeforeCare: filters.hasBeforeCare || undefined,
-    hasAfterCare: filters.hasAfterCare || undefined,
-    verifiedOnly: filters.verifiedOnly || undefined,
-  }), [filters, activeYear])
-
-  // Remote data — SQL-filtered before hitting the wire
-  const { data: allCamps = [], isLoading, error } = trpc.camps.list.useQuery(sqlInput)
-
   // Derive summer weeks from actual camp data (uses DB week_key values e.g. "W22")
   const summerWeeks = useMemo(() => deriveSummerWeeks(allCamps), [allCamps])
 
-  // Client-side pass: only `search` still needs to run here; all other filters
-  // were already applied by SQL. matchesFilters is kept as-is — it's a no-op
-  // for the SQL-filtered fields and handles search for the remaining rows.
+  // Derived
+  const activeYear = years[0] ?? new Date().getFullYear()
+
+  // Memoized so the object reference only changes when filter values actually change.
+  // Without this, activeFilters is a new literal on every render and the filtered
+  // memo below re-runs on every keystroke regardless of whether anything changed.
   const activeFilters = useMemo<CampFilters>(
     () => ({ ...filters, search, year: filters.year || activeYear }),
     [filters, search, activeYear],
@@ -392,9 +380,53 @@ export function CampApp() {
               { id: "search", icon: "search", label: "Search" },
               { id: "compare", icon: "compare", label: "Compare", badge: compareList.length },
               { id: "map", icon: "map", label: "Map" },
-            ] as Array<{ id: Tab; icon: IconName; label: string; badge?: number }>
+            ] as Array<{ id: Tab; icon: string; label: string; badge?: number }>
           ).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors relative ${
+                activeTab === tab.id ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <Icon name={tab.icon as IconName} size={22} />
+              <span className="text-[10px] font-medium">{tab.label}</span>
+              {tab.badge != null && tab.badge > 0 && (
+                <span className="absolute -top-0.5 right-[calc(50%-18px)] min-w-[16px] h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Sheets */}
+      <FilterSheet
+        open={showFilter}
+        onClose={() => setShowFilter(false)}
+        filters={filters}
+        onChange={setFilters}
+        availableYears={years}
+        camps={allCamps}
+      />
+      <DetailSheet
+        camp={selectedCamp}
+        onClose={() => setSelectedCamp(null)}
+        onCompare={toggleCompare}
+        compareList={compareList}
+        planState={planState}
+        onPlanChange={setPlanState}
+        summerWeeks={summerWeeks}
+      />
+      <ExportSheet
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        camps={allCamps}
+        filteredCamps={filtered}
+        planState={planState}
+        summerWeeks={summerWeeks}
+      />
+    </div>
+  )
+}
