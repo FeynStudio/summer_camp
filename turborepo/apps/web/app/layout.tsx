@@ -11,6 +11,15 @@ const geistSans = localFont({
 export const metadata: Metadata = {
   title: "Camp Planner",
   description: "Find and compare summer camps near Princeton, NJ",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Camp Planner",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 }
 
 export default function RootLayout({

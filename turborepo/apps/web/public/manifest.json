@@ -1,0 +1,17 @@
+{
+  "name": "Camp Planner",
+  "short_name": "Camp Planner",
+  "description": "Find and compare summer camps near Princeton, NJ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
